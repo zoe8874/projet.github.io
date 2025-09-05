@@ -3,7 +3,7 @@ contents: read
 pages: Write
 id-token: write
  jobs:
- duild:
+ build:
  rund-on: ubunto-22.04
  steps:
  - name: Checkout code 
