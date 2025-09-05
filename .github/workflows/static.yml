@@ -1,52 +1,59 @@
-# 将静态内容部署到 GitHub Pages 的简易工作流程
-name: Deploy static content to Pages
+name: Deploy to Github Pages  # Defines the name of the GitHub Actions workflow.
 
 on:
-  # 仅在推送到默认分支时运行。
-  push:
-    branches: ['main']
-
-  # 这个选项可以使你手动在 Action tab 页面触发工作流
-  workflow_dispatch:
-
-# 设置 GITHUB_TOKEN 的权限，以允许部署到 GitHub Pages。
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# 允许一个并发的部署
-concurrency:
-  group: 'pages'
-  cancel-in-progress: true
+    push:
+        branches:
+            - develop  # Triggers the workflow on each push to the 'develop' branch.
 
 jobs:
-  # 单次部署的工作描述
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Set up Node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - name: Install pnpm
-        run: npm install pnpm -g
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-      - name: Build
-        run: pnpm build:view
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          # Upload dist repository
-          path: './dist'
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+    build:
+      name: Build  # Defines the name of the build job.
+      runs-on: ubuntu-latest  # Specifies the operating system for the job.
+
+      steps:
+        - name: Checkout Repo  # Checks out the repository.
+          uses: actions/checkout@v4
+
+        - name: Create Node Environment  # Sets up Node.js environment.
+          uses: actions/setup-node@v4
+          with: 
+            node-version: 16.x
+
+        - name: Install Packages and Build Application  # Installs npm packages and builds the Vue.js application.
+          run: |
+            npm ci
+            npm run build
+
+        - name: Setup Pages  # Configures pages for deployment.
+          id: pages
+          uses: actions/configure-pages@v3
+
+        - name: Build with Jekyll  # Builds the application with Jekyll.
+          uses: actions/jekyll-build-pages@v1
+          with:
+            source: ./dist/
+            destination: ./_site
+
+        - name: Upload artifact  # Uploads the build artifact.
+          uses: actions/upload-pages-artifact@v2
+      
+    deploy:
+      name: Deploy Application  # Defines the name of the deployment job.
+
+      # Add a dependency to the build job
+      needs: build  # Specifies that the deployment job depends on the successful completion of the build job.
+
+      # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+      permissions:
+        pages: write      # Grants write permission to deploy to Pages.
+        id-token: write   # Grants write permission to verify the deployment source.
+
+      environment:
+        name: github-pages  # Specifies the environment for deployment.
+        url: ${{ steps.deployment.outputs.page_url }}  # Retrieves the deployment URL from the previous deployment step.
+
+      runs-on: ubuntu-latest  # Specifies the operating system for the deployment job.
+      steps:
+        - name: Deploy to GitHub Pages  # Deploys the application to GitHub Pages.
+          id: deployment
+          uses: actions/deploy-pages@v2  # Specifies the version of the deployment action.
